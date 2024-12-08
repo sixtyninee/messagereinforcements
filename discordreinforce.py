@@ -2,6 +2,8 @@ import os
 import discord
 from discord import app_commands
 from discord.ext import commands
+import aiohttp
+from aiohttp import web
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -75,4 +77,27 @@ async def callhelp(interaction: discord.Interaction, profilelink: str):
 
     await interaction.response.send_message(f"Message sent to {count} members.", ephemeral=False)
 
-bot.run(TOKEN)
+async def handle(request):
+    return web.Response(text="Bot is running")
+
+async def start_web_server():
+    app = web.Application()
+    app.router.add_get("/", handle)
+    port = int(os.getenv("PORT", 8080))  # Use environment variable for port, default to 8080
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    print(f"Web server running on port {port}")
+
+# Run both the bot and web server
+async def main():
+    # Start the web server
+    await start_web_server()
+
+    # Start the bot
+    await bot.start(TOKEN)
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
