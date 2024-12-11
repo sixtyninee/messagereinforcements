@@ -1,7 +1,7 @@
 import os
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 import aiohttp
 from aiohttp import web
 from dotenv import load_dotenv
@@ -77,26 +77,40 @@ async def callhelp(interaction: discord.Interaction, profilelink: str):
 
     await interaction.response.send_message(f"Message sent to {count} members.", ephemeral=False)
 
+
+async def keep_alive():
+    while True:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get("https://reinforcements.onrender.com") as response:
+                    print("Pinged the service!")
+        except Exception as e:
+            print(f"Error pinging the service: {e}")
+        await asyncio.sleep(500)
+
 async def handle(request):
     return web.Response(text="Bot is running")
 
 async def start_web_server():
     app = web.Application()
     app.router.add_get("/", handle)
-    port = int(os.getenv("PORT", 8080))  # Use environment variable for port, default to 8080
+    port = int(os.getenv("PORT", 8080))
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
     print(f"Web server running on port {port}")
 
-# Run both the bot and web server
+
 async def main():
-    # Start the web server
     await start_web_server()
 
-    # Start the bot
-    await bot.start(TOKEN)
+    bot_task = asyncio.create_task(bot.start(TOKEN))
+
+    keep_alive_task = asyncio.create_task(keep_alive())
+
+    await bot_task
+    await keep_alive_task
 
 if __name__ == "__main__":
     import asyncio
